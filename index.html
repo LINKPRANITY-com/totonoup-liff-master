@@ -1,0 +1,481 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>トトノアップ LINE初回登録</title>
+
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 24px 16px;
+      background: #f5f7f8;
+      font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Helvetica Neue",
+        "Yu Gothic",
+        "Hiragino Kaku Gothic ProN",
+        Arial,
+        sans-serif;
+      color: #222;
+    }
+
+    .container {
+      max-width: 520px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 28px 22px;
+      box-shadow: 0 3px 16px rgba(0, 0, 0, 0.07);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      text-align: center;
+      font-size: 24px;
+    }
+
+    .lead {
+      margin: 0 0 28px;
+      text-align: center;
+      color: #666;
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .field {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 7px;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .required {
+      color: #d93025;
+      font-size: 12px;
+      margin-left: 5px;
+    }
+
+    input {
+      width: 100%;
+      padding: 13px 12px;
+      border: 1px solid #ccc;
+      border-radius: 9px;
+      font-size: 16px;
+      background: #fff;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: #0f766e;
+    }
+
+    .hint {
+      margin-top: 7px;
+      font-size: 12px;
+      color: #777;
+      line-height: 1.6;
+    }
+
+    button {
+      width: 100%;
+      padding: 15px;
+      border: none;
+      border-radius: 10px;
+      background: #0f766e;
+      color: #fff;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      background: #9ca3af;
+      cursor: default;
+    }
+
+    #status {
+      display: none;
+      margin-top: 20px;
+      padding: 14px;
+      border-radius: 9px;
+      font-size: 14px;
+      line-height: 1.7;
+      white-space: pre-line;
+    }
+
+    #status.loading {
+      display: block;
+      background: #f2f4f5;
+      color: #555;
+    }
+
+    #status.pending {
+      display: block;
+      background: #fff8e7;
+      color: #765300;
+      border: 1px solid #ead69d;
+    }
+
+    #status.error {
+      display: block;
+      background: #fff0f0;
+      color: #a12622;
+    }
+
+    .notice {
+      margin-top: 24px;
+      font-size: 12px;
+      color: #777;
+      line-height: 1.7;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="container">
+  <div class="card">
+
+    <h1>トトノアップ 初回登録</h1>
+
+    <p class="lead">
+      トトノアップをご利用いただくため、<br>
+      最初に利用者情報をご登録ください。
+    </p>
+
+    <form id="registrationForm">
+
+      <div class="field">
+        <label for="fullName">
+          氏名（フルネーム）
+          <span class="required">必須</span>
+        </label>
+
+        <input
+          type="text"
+          id="fullName"
+          autocomplete="name"
+          placeholder="例：山田 太郎"
+          required
+        >
+      </div>
+
+      <div class="field">
+        <label for="birthday">
+          誕生日4桁
+          <span class="required">必須</span>
+        </label>
+
+        <input
+          type="text"
+          id="birthday"
+          inputmode="numeric"
+          maxlength="4"
+          pattern="[0-9]{4}"
+          autocomplete="off"
+          placeholder="例：1230"
+          required
+        >
+
+        <div class="hint">
+          12月30日生まれは「1230」、
+          1月5日生まれは「0105」と入力してください。
+        </div>
+      </div>
+
+      <button
+        type="submit"
+        id="submitButton"
+        disabled
+      >
+        LINE認証を確認中...
+      </button>
+
+    </form>
+
+    <div id="status"></div>
+
+    <div class="notice">
+      ご入力いただいた情報は、従業員名簿との照合および
+      トトノアップの利用者確認に使用します。<br>
+      誕生日4桁はLINE紐づけ管理には保存しません。
+    </div>
+
+  </div>
+</div>
+
+<script>
+
+  /*
+   * トトノアップ LINE初回登録
+   * LINE LIFF ID・GAS URL設定済み
+   */
+
+  const LIFF_ID =
+    '2012686741-KxNKYtVY';
+
+  const GAS_URL =
+    'https://script.google.com/macros/s/AKfycbzY4NGLoY8JlKO3-Ltsz-RdNnlB7kYfcbL8h-B2lD63ueEyNESq6I6i4kKylrJbxp4c/exec';
+
+
+  const form =
+    document.getElementById('registrationForm');
+
+  const submitButton =
+    document.getElementById('submitButton');
+
+  const statusBox =
+    document.getElementById('status');
+
+  let ready = false;
+  let submitted = false;
+
+
+  /* LINE認証 */
+
+  async function initializeLiff() {
+
+    setStatus(
+      'LINE認証を確認しています...',
+      'loading'
+    );
+
+    try {
+
+      await liff.init({
+        liffId: LIFF_ID
+      });
+
+      if (!liff.isLoggedIn()) {
+
+        liff.login({
+          redirectUri: window.location.href
+        });
+
+        return;
+      }
+
+      const idToken =
+        liff.getIDToken();
+
+      if (!idToken) {
+        throw new Error(
+          'LINE認証情報を取得できませんでした。'
+        );
+      }
+
+      ready = true;
+      submitButton.disabled = false;
+      submitButton.textContent = '登録する';
+
+      clearStatus();
+
+    } catch (error) {
+
+      console.error(
+        'LINE認証エラー:',
+        error
+      );
+
+      setStatus(
+        'LINE認証に失敗しました。LINEからもう一度開いてください。',
+        'error'
+      );
+
+      submitButton.disabled = true;
+    }
+  }
+
+
+  /* 誕生日4桁の確認 */
+
+  function validBirthday(value) {
+
+    if (!/^\d{4}$/.test(value)) {
+      return false;
+    }
+
+    const month =
+      Number(value.slice(0, 2));
+
+    const day =
+      Number(value.slice(2, 4));
+
+    const daysInMonth = [
+      31, 29, 31, 30, 31, 30,
+      31, 31, 30, 31, 30, 31
+    ];
+
+    return (
+      month >= 1 &&
+      month <= 12 &&
+      day >= 1 &&
+      day <= daysInMonth[month - 1]
+    );
+  }
+
+
+  /* 初回登録 */
+
+  form.addEventListener(
+    'submit',
+    async function(event) {
+
+      event.preventDefault();
+
+      if (!ready || submitted) {
+        return;
+      }
+
+      const fullName =
+        document
+          .getElementById('fullName')
+          .value
+          .trim();
+
+      const birthday =
+        document
+          .getElementById('birthday')
+          .value
+          .trim();
+
+      if (!fullName) {
+
+        setStatus(
+          '氏名を入力してください。',
+          'error'
+        );
+
+        return;
+      }
+
+      if (!validBirthday(birthday)) {
+
+        setStatus(
+          '誕生日を4桁で入力してください。',
+          'error'
+        );
+
+        return;
+      }
+
+      try {
+
+        submitButton.disabled = true;
+        submitButton.textContent = '送信中...';
+
+        setStatus(
+          '登録情報を送信しています...',
+          'loading'
+        );
+
+        const idToken =
+          liff.getIDToken();
+
+        if (!idToken) {
+          throw new Error(
+            'LINE認証情報を取得できませんでした。'
+          );
+        }
+
+        /*
+         * GASに登録情報を送信
+         *
+         * no-corsではGASの処理結果を
+         * ブラウザから読み取れません。
+         * 送信成功を登録完了とは判定しません。
+         */
+
+        await fetch(
+          GAS_URL,
+          {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: {
+              'Content-Type':
+                'text/plain;charset=utf-8'
+            },
+            body: JSON.stringify({
+              fullName,
+              birthday,
+              idToken
+            })
+          }
+        );
+
+        submitted = true;
+
+        submitButton.textContent =
+          '送信済み';
+
+        setStatus(
+          '登録情報を送信しました。\n\n' +
+          '登録が完了するとLINEに通知が届きます。\n' +
+          '通知が届かない場合は、管理担当者へお問い合わせください。',
+          'pending'
+        );
+
+        form
+          .querySelectorAll('input')
+          .forEach(function(input) {
+            input.disabled = true;
+          });
+
+      } catch (error) {
+
+        console.error(
+          '登録エラー:',
+          error
+        );
+
+        submitButton.disabled = false;
+        submitButton.textContent =
+          '登録する';
+
+        setStatus(
+          '送信できませんでした。通信環境をご確認のうえ、もう一度お試しください。',
+          'error'
+        );
+      }
+    }
+  );
+
+
+  /* メッセージ表示 */
+
+  function setStatus(message, type) {
+    statusBox.textContent = message;
+    statusBox.className = type;
+  }
+
+  function clearStatus() {
+    statusBox.textContent = '';
+    statusBox.className = '';
+  }
+
+
+  /* 起動 */
+
+  initializeLiff();
+
+</script>
+
+</body>
+</html>
