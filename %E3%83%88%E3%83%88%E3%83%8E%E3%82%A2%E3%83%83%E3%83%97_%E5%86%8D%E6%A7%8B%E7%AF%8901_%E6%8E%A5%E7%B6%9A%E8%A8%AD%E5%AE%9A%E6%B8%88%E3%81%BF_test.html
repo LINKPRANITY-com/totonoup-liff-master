@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>トトノアップ 初回登録</title><script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>body{font-family:system-ui,sans-serif;max-width:440px;margin:0 auto;padding:24px;color:#193b45;background:#f7fafb}h1{font-size:24px}label{display:block;margin:18px 0 6px}input,button{box-sizing:border-box;width:100%;padding:14px;border-radius:9px;font-size:16px}input{border:1px solid #bdcdd1}button{margin-top:24px;background:#137e90;color:white;border:0}button:disabled{opacity:.55}#status{white-space:pre-wrap;line-height:1.7;margin-top:16px}.hint{font-size:13px;color:#52646a}</style></head>
+<body><h1>トトノアップ 初回登録</h1><p>LINEアカウントと従業員情報を紐づけます。</p>
+<form id="form"><label for="name">氏名</label><input id="name" autocomplete="name" required maxlength="100">
+<label for="birthday">誕生日4桁（月日）</label><input id="birthday" type="text" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" placeholder="例：1230" required>
+<button id="submit" disabled>LINE認証を確認中</button></form><p id="status" role="status"></p>
+<p class="hint">誕生日4桁は名簿照合のため仮登録中に保存します。登録の確定はLINEからの案内または管理担当者の確認によります。</p>
+<script>
+const LIFF_ID='2012686741-KxNKYtVY';
+// 新しいGASのウェブアプリURLに差し替える。旧URLは使用しない。
+const GAS_URL='https://script.google.com/macros/s/AKfycbyIQrH7K7W4nflBSFmJ9XRbElHLC7TqdiqOubZcGR11xTowHexlW8O5AaJAXecGrroE/exec';
+let token='';
+const status=document.getElementById('status'),button=document.getElementById('submit');
+function say(message){status.textContent=message;}
+(async()=>{try{await liff.init({liffId:LIFF_ID});if(!liff.isLoggedIn()){liff.login();return;}token=liff.getIDToken();if(!token)throw Error('LINE認証情報を取得できません');button.disabled=false;button.textContent='登録情報を送信';}catch(e){say('LINE認証に失敗しました。LINEアプリから開き直してください。');}})();
+document.getElementById('form').addEventListener('submit',async(e)=>{e.preventDefault();const fullName=document.getElementById('name').value.trim(),birthday=document.getElementById('birthday').value.trim();if(!fullName||!/^[0-9]{4}$/.test(birthday)){say('氏名と誕生日4桁を確認してください。');return;}if(!token){say('LINE認証をやり直してください。');return;}if(GAS_URL.includes('PASTE_NEW_')){say('登録先が未設定です。管理担当者へ連絡してください。');return;}button.disabled=true;say('送信中…');try{await fetch(GAS_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({fullName,birthday,idToken:token})});say('送信しました。\n※通信方式の制約により、この画面では登録成功を確認できません。LINE案内または管理担当者の確認をお待ちください。');button.textContent='送信済み（結果未確認）';}catch(err){say('送信できませんでした。通信環境をご確認ください。');button.disabled=false;}});
+</script></body></html>
